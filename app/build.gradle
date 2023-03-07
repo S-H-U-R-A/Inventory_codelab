@@ -1,6 +1,6 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
+    id 'kotlin-android' // ACÁ YA ESTAN LOS FLOWS
     id 'androidx.navigation.safeargs.kotlin'
     id 'com.google.devtools.ksp' version '1.8.0-1.0.8'
 }
