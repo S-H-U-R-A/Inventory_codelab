@@ -21,18 +21,21 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.example.inventory.data.InventoryApplication
 import com.example.inventory.data.Item
-import com.example.inventory.data.ItemRoomDatabase
 import com.example.inventory.databinding.FragmentAddItemBinding
 
 class AddItemFragment : Fragment() {
 
-    private val viewModel: InventoryViewModel by activityViewModels<InventoryViewModel> {
+    //SE OBTIENE EL VIEW MODEL
+    private val viewModel: InventoryViewModel by activityViewModels {
         InventoryViewModelFactory(
+            //SE PASA E OBJETO
             (requireActivity().application as InventoryApplication).dataBase.itemDao()
         )
     }
@@ -55,6 +58,46 @@ class AddItemFragment : Fragment() {
         return binding.root
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        val id = navigationArgs.itemId
+
+        //SE VALIDA QUE SE HAYA PASADO UN ID, AL NAVEGAR A ESTA PÁGINA
+        if( id > 0){
+            viewModel.retrieveItem(id).observe(
+                viewLifecycleOwner
+            ){ selectedItem ->
+                item = selectedItem
+                bind(item)
+            }
+        }else {
+            //SI NO SE ENVIA EL ID QUIERE DECIR QUE EL USUARIO
+            //QUIERE GUARDAR UN NUEVO ITEM
+            binding.saveAction.setOnClickListener {
+                addNewItem()
+            }
+        }
+    }
+
+    private fun bind(item: Item){
+
+        val price = "%.2f".format( item.itemPrice )
+
+        //SPANNABLE SE USA PARA PERMITIR LA APLICACIÓN DE ESTILOS EN EL TEXTVIEW
+        binding.apply {
+            itemName.setText( item.itemName, TextView.BufferType.SPANNABLE)
+            itemPrice.setText( price, TextView.BufferType.SPANNABLE )
+            itemCount.setText( item.quantityInStock.toString(), TextView.BufferType.SPANNABLE )
+
+            //SE CONFIGURA EL BOTÓN DE GUARDAR
+            saveAction.setOnClickListener {
+                updateItem()
+            }
+        }
+
+    }
+
     private fun isEntryValid() : Boolean {
         return viewModel.isEntryValid(
             binding.itemName.text.toString(),
@@ -67,7 +110,6 @@ class AddItemFragment : Fragment() {
         //SI LOS CAMPOS SON VALIDOS HACEMOS LA INSERCIÓN Y NAVEGAMOS
         //A LA SIGUIENTE PÁGINA
        if ( isEntryValid() ){
-
             viewModel.addNewItem(
                 binding.itemName.text.toString(),
                 binding.itemPrice.text.toString(),
@@ -76,17 +118,22 @@ class AddItemFragment : Fragment() {
 
            val action = AddItemFragmentDirections.actionAddItemFragmentToItemListFragment()
            findNavController().navigate( action )
-
        }
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    private fun updateItem(){
+        if (isEntryValid()){
+            viewModel.updateItemExist(
+                navigationArgs.itemId,
+                this.binding.itemName.text.toString(),
+                this.binding.itemPrice.text.toString(),
+                this.binding.itemCount.text.toString()
+            )
 
-        binding.saveAction.setOnClickListener {
-            addNewItem()
+            val action = AddItemFragmentDirections.actionAddItemFragmentToItemListFragment()
+            findNavController().navigate(action)
+
         }
-
     }
 
     /**
@@ -99,6 +146,7 @@ class AddItemFragment : Fragment() {
         val inputMethodManager = requireActivity().getSystemService(INPUT_METHOD_SERVICE) as
                 InputMethodManager
         inputMethodManager.hideSoftInputFromWindow(requireActivity().currentFocus?.windowToken, 0)
+        //SE LIBERA EL RECURSO
         _binding = null
     }
 
